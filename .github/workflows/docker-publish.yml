@@ -1,0 +1,56 @@
+# .github/workflows/docker-publish.yml
+
+name: Build and Push Docker Image to GHCR
+
+# Define quando a Action deve ser executada
+on:
+  # Executa em todo push para a branch 'main'
+  push:
+    branches: [ "main" ]
+  # Permite que você execute este workflow manualmente na aba Actions
+  workflow_dispatch:
+
+# Define as permissões que o job precisa para rodar
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # Nome do job
+  build-and-push-image:
+    # O tipo de máquina virtual para rodar o job
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Faz o checkout do seu código do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Faz o login no GitHub Container Registry (ghcr.io)
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          # 'github.repository_owner' usa seu nome de usuário automaticamente
+          username: ${{ github.repository_owner }}
+          # 'secrets.GITHUB_TOKEN' é um token automático e seguro gerado pela Action
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Extrai metadados (como tags e labels) da imagem
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Gera o nome da imagem usando seu usuário e o nome do repositório
+          # Exemplo: ghcr.io/dfleandro28/leandro-trab
+          images: ghcr.io/${{ github.repository }}
+
+      # 4. Constrói a imagem Docker e a envia para o ghcr.io
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # Usa as tags geradas no passo anterior (ex: latest, sha-commit)
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
